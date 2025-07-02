@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Smart Health Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Welcome, {{ username }} 👋</h1>
+        <nav>
+            <a href="{{ url_for('logout') }}">Logout</a>
+            <a href="{{ url_for('export_pdf') }}">Export PDF</a>
+        </nav>
+    </header>
+
+    <!-- Floating BMI Calculator -->
+    <div class="bmi-float">
+        <h3>BMI Calculator</h3>
+        <form id="bmiForm">
+            <input type="number" name="height" placeholder="Height (cm)" required>
+            <input type="number" name="weight" placeholder="Weight (kg)" required>
+            <button type="submit">Calculate</button>
+            <div id="bmiResult"></div>
+        </form>
+    </div>
+
+    <!-- Health Data Entry -->
+    <section class="health-form">
+        <h2>Log Your Health</h2>
+        <form method="POST">
+            <input type="number" name="calories" placeholder="Calories (kcal)" required>
+            <input type="number" step="0.1" name="water" placeholder="Water (litres)" required>
+            <input type="number" step="0.1" name="sleep" placeholder="Sleep (hours)" required>
+            <button type="submit">Add Entry</button>
+        </form>
+    </section>
+
+    <!-- Suggestion Section -->
+    <section class="suggestion-box">
+        <h3>Suggestions 💡</h3>
+        <ul>
+            <li>💧 Drink at least 2L of water per day.</li>
+            <li>😴 Try to sleep at least 7–8 hours regularly.</li>
+            <li>🔥 Keep your daily calorie intake balanced.</li>
+        </ul>
+    </section>
+
+    <!-- Graph Section -->
+    <section class="chart-container">
+        <h2>Health Stats</h2>
+        <canvas id="healthChart" width="400" height="200"></canvas>
+    </section>
+
+    <!-- Health Log Table -->
+    <section class="log-table">
+        <h2>Health Logs</h2>
+        <table>
+            <tr>
+                <th>Date</th>
+                <th>Calories</th>
+                <th>Water (L)</th>
+                <th>Sleep (hrs)</th>
+            </tr>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.date.strftime('%Y-%m-%d') }}</td>
+                <td>{{ log.calories }}</td>
+                <td>{{ log.water }}</td>
+                <td>{{ log.sleep }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </section>
+
+    <footer>
+        Made with ❤️ by Bhavesh Kusakiya
+    </footer>
+
+    <script>
+        // BMI Calculator Logic
+        document.getElementById('bmiForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const form = new FormData(this);
+            const res = await fetch('/bmi', {
+                method: 'POST',
+                body: form
+            });
+            const data = await res.json();
+            const result = document.getElementById('bmiResult');
+            if (data.bmi) {
+                result.innerHTML = `Your BMI: <strong>${data.bmi}</strong> (${data.category})`;
+            } else {
+                result.innerHTML = 'Error: Invalid input!';
+            }
+        });
+
+        // Chart.js Health Graph
+        async function loadHealthGraph() {
+            const response = await fetch("/get_health_data");
+            const data = await response.json();
+            const dates = data.map(d => d.date);
+            const calories = data.map(d => d.calories);
+            const water = data.map(d => d.water);
+            const sleep = data.map(d => d.sleep);
+
+            new Chart(document.getElementById("healthChart"), {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        { label: 'Calories', data: calories, borderColor: 'red', fill: false },
+                        { label: 'Water (L)', data: water, borderColor: 'blue', fill: false },
+                        { label: 'Sleep (hrs)', data: sleep, borderColor: 'green', fill: false }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Health Tracker Stats'
+                        }
+                    }
+                }
+            });
+        }
+
+        loadHealthGraph();
+    </script>
+</body>
+</html>
