@@ -39,7 +39,7 @@ class HealthLog(db.Model):
     user = db.relationship('User', backref=db.backref('logs', lazy=True))
 
 # ─── Auto‑create tables on first request (works in Gunicorn/Render) ──────────
-@app.before_first_request
+@app.before_serving
 def create_tables():
     """Ensure all tables exist; runs once at the first incoming request."""
     db.create_all()
