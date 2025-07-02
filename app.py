@@ -10,7 +10,7 @@ from reportlab.pdfgen import canvas
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
 
-# Database Setup
+# ─── Database Setup ──────────────────────────────────────────────────────────
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_FOLDER = os.path.join(BASE_DIR, 'database')
 os.makedirs(DB_FOLDER, exist_ok=True)
@@ -23,7 +23,7 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# Models
+# ─── Models ──────────────────────────────────────────────────────────────────
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -38,10 +38,18 @@ class HealthLog(db.Model):
     sleep = db.Column(db.Float)
     user = db.relationship('User', backref=db.backref('logs', lazy=True))
 
+# ─── Auto‑create tables on first request (works in Gunicorn/Render) ──────────
+@app.before_first_request
+def create_tables():
+    """Ensure all tables exist; runs once at the first incoming request."""
+    db.create_all()
+
+# ─── LoginManager loader ─────────────────────────────────────────────────────
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# ─── Routes ──────────────────────────────────────────────────────────────────
 @app.route('/')
 def home():
     if current_user.is_authenticated:
@@ -140,7 +148,9 @@ def export_pdf():
 
     p.save()
     buffer.seek(0)
-    return send_file(buffer, as_attachment=True, download_name='health_logs.pdf', mimetype='application/pdf')
+    return send_file(buffer, as_attachment=True,
+                     download_name='health_logs.pdf',
+                     mimetype='application/pdf')
 
 @app.route('/get_health_data')
 @login_required
@@ -154,6 +164,7 @@ def get_health_data():
     } for log in logs]
     return jsonify(serialized_logs)
 
+# ─── Local dev entry‑point ───────────────────────────────────────────────────
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
