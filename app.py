@@ -38,10 +38,8 @@ class HealthLog(db.Model):
     sleep = db.Column(db.Float)
     user = db.relationship('User', backref=db.backref('logs', lazy=True))
 
-# ─── Auto‑create tables on first request (works in Gunicorn/Render) ──────────
-@app.before_serving
-def create_tables():
-    """Ensure all tables exist; runs once at the first incoming request."""
+# ─── One‑time table creation (runs on import) ────────────────────────────────
+with app.app_context():
     db.create_all()
 
 # ─── LoginManager loader ─────────────────────────────────────────────────────
@@ -123,7 +121,10 @@ def bmi():
         height = float(request.form['height']) / 100
         weight = float(request.form['weight'])
         bmi = round(weight / (height ** 2), 2)
-        category = "Underweight" if bmi < 18.5 else "Normal" if bmi < 25 else "Overweight" if bmi < 30 else "Obese"
+        category = ("Underweight" if bmi < 18.5 else
+                    "Normal"      if bmi < 25   else
+                    "Overweight"  if bmi < 30   else
+                    "Obese")
         return jsonify({'bmi': bmi, 'category': category})
     except:
         return jsonify({'error': 'Invalid input'}), 400
@@ -166,6 +167,4 @@ def get_health_data():
 
 # ─── Local dev entry‑point ───────────────────────────────────────────────────
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     app.run(debug=True)
